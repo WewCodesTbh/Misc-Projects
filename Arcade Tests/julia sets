@@ -1,0 +1,77 @@
+import arcade
+import random
+
+SCREEN_WIDTH = 1200
+SCREEN_HEIGHT = 1000
+SCREEN_TITLE = "Julia Sets Test"
+
+
+class MyWindow(arcade.Window):
+    def __init__(self):
+        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+        self.center_window()
+        self.background_color = arcade.color.BLACK
+        
+        # GL geometry that will be used to pass pixel coordinates to the shader
+        # It has the same dimensions as the screen
+        self.quad_fs = arcade.gl.geometry.quad_2d_fs()
+        self.total_time = 0
+        self.drift = 0
+
+        # Create a simple shader program
+        self.prog = self.ctx.program(
+            vertex_shader="""
+            #version 330
+            in vec2 in_vert;
+            void main()
+            {
+                gl_Position = vec4(in_vert.x, in_vert.y, 0., 1.);
+            }
+            """.replace("SCREEN_WIDTH", str(SCREEN_WIDTH//2)).replace("SCREEN_HEIGHT", str(SCREEN_HEIGHT//2)),
+            fragment_shader="""
+            #version 330
+            out vec4 fragColor;
+            uniform float time;
+            uniform float R;
+            vec2 multiply(vec2 u, vec2 v){
+             return vec2(u.x*v.x-u.y*v.y, u.x*v.y+u.y*v.x);
+            }
+            vec2 exponent(vec2 u, int n){
+             vec2 w = u;
+             for (int i = 0; i < n; i++){
+              w = multiply(u, u);
+             }
+             return w;
+            }
+            vec2 add(vec2 u, vec2 v){
+             return vec2(u.x+v.x, v.y+u.y);
+            }
+            void main(){
+            vec2 Z = vec2(gl_FragCoord.x/350-SCREEN_WIDTH, gl_FragCoord.y/350-SCREEN_HEIGHT);
+            int escapeFlag = 0;
+            for (int i = 0; i < 1000; i++){
+                 if (Z.x*Z.x+Z.y*Z.y > 10000){
+                  float val = 1-pow(2.78182, -float(i)/106);
+                  fragColor = vec4(vec3(val), 1);
+                  escapeFlag = 1;
+                  break;
+                 }
+                 Z = add(exponent(Z, 2), vec2(-0.18152306199312696+sin(time/3)/50-sin(time/40)/5+R, 0.6645891942576561+cos(time/3)/50)-sin(time/40)/5)+R;
+            }
+            if (escapeFlag <= 0){
+             fragColor = vec4(1,1,1,1);
+            }
+            }
+            """.replace("SCREEN_WIDTH", str(SCREEN_WIDTH//700+0.4)).replace("SCREEN_HEIGHT", str(SCREEN_HEIGHT//700+0.2))
+        )
+
+    def on_draw(self):
+        self.clear()
+        self.quad_fs.render(self.prog)
+        self.prog['time'] = self.total_time
+        self.prog['R'] = self.drift
+        self.drift += (random.random()-0.5)/200
+        self.total_time -= 0.7
+
+app = MyWindow()
+arcade.run()
