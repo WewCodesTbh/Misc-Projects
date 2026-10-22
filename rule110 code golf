@@ -1,5 +1,0 @@
-def S(s, n):
-    print(s);a,b,c='','0'+s,{0:0,1:1,10:1,11:1,100:0,101:1,110:1,111:0}
-    for i in range(len(b)):a+=str(c[int(b[i:i+3])])
-    return S(a,n-1) if n>0 else 1
-S('1', 100)
