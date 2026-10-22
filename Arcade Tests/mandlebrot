@@ -1,0 +1,92 @@
+import arcade
+import random
+import math
+
+SCREEN_WIDTH = 1200
+SCREEN_HEIGHT = 1000
+SCREEN_TITLE = "Mandlebrot Zoom"
+#
+ZOOM_X, ZOOM_Y = random.choice([[-0.83845, 0.08925], [-0.081, 0.418], [-1.90748, 0], [0.743643887037151-0.505, 0.131825904205330-0.0101], [0.453-0.4995, 0.396-0.01011]])
+ZOOM_RATE = 1.5
+
+RAMP_UP = 150
+
+TIME = 0
+
+
+
+
+class MyWindow(arcade.Window):
+    def __init__(self):
+        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+        self.center_window()
+        self.background_color = arcade.color.BLACK
+
+        self.quad_fs = arcade.gl.geometry.quad_2d_fs()
+
+        #compute shader to generate the mandlebrot set
+        self.prog = self.ctx.program(
+            vertex_shader="""
+#version 400
+#extension GL_ARB_gpu_shader_fp64 : enable
+
+in vec2 in_vert;
+void main()
+{
+gl_Position = vec4(in_vert.x, in_vert.y, 0., 1.);
+}
+            """,
+            fragment_shader="""
+            #version 400
+            out vec4 fragColor;
+            uniform float time;
+            uniform int iter;
+            vec2 multiply(vec2 u, vec2 v){
+             return vec2(u.x*v.x-u.y*v.y, u.x*v.y+u.y*v.x);
+            }
+            vec2 exponent(vec2 u, int n){
+             vec2 w = u;
+             for (int i = 0; i < n; i++){
+              w = multiply(u, u);
+             }
+             return w;
+            }
+            vec2 add(vec2 u, vec2 v){
+             return vec2(u.x+v.x, v.y+u.y);
+            }
+            void main(){
+            vec2 C = vec2((gl_FragCoord.x-SCREEN_WIDTH)/(100*time)+ZOOM_X, (gl_FragCoord.y-SCREEN_HEIGHT)/(100*time))+ZOOM_Y;
+            vec2 Z = vec2(0, 0);
+            int escapeFlag = 0;
+            for (int i = 0; i < iter; i++){
+                 if (length(Z) > 2){
+                  float val = float(i)/iter;
+                  fragColor = vec4(9.0 * (1.0 - val) * val * val,
+			  15.0 * (1.0 - val) * (1.0 - val) * val * val,
+			  8.0 * (1.0 - val) * (1.0 - val) * (1.0 - val) * val, 1);
+                  escapeFlag = 1;
+                  break;
+                 }
+                 Z = add(exponent(Z, 2), C);
+            }
+            if (escapeFlag <= 0){
+             fragColor = vec4(0,0,0,1);
+            }
+            }
+            """.replace("SCREEN_WIDTH", str(SCREEN_WIDTH//2-ZOOM_X)).replace("SCREEN_HEIGHT", str(SCREEN_HEIGHT//2-ZOOM_Y)).replace("ZOOM_X", str(ZOOM_X)).replace("ZOOM_Y", str(ZOOM_Y))
+        )
+
+    def on_draw(self):
+        self.clear()
+        self.quad_fs.render(self.prog)
+        self.prog['time'] = (ZOOM_RATE)**(self.time)
+        i = round(RAMP_UP*(max(1,self.time/2))/(3*(1+math.log(ZOOM_RATE))**2))
+        self.prog['iter'] = i
+        if self.time > 26:
+            quit()
+        
+
+app = MyWindow()
+arcade.run()
+
+
