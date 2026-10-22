@@ -1,0 +1,12 @@
+import random as r
+f = open('w.txt').read().split(sep='\n');a=r.sample(f,1)[0]
+while True:
+    g = input(':');u = ['✕'+g[i] for i in range(5)]
+    for i,j in enumerate(g): 
+        if j in a:u[i]=f'-{j}'
+        if j==a[i]:
+            u[i]=f'✓{j}';w+=1
+    if w>4:break
+    print(u)
+
+#probably can improve this a lot, but I don't even like wordle so
